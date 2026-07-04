@@ -1,0 +1,54 @@
+# =====================================================================
+# AgentOps EvalBench MCP - Python dependencies
+# ---------------------------------------------------------------------
+# Install everything:      pip install -r requirements.txt
+# Minimal core only:       pip install -e .            (see pyproject.toml)
+#
+# The project is designed so the CORE (config, DB, evaluation metrics,
+# cost tracking, reports, FastAPI, CLI, tests) works with the "Core"
+# block below. The "RAG / LLM" and "Eval frameworks" blocks are only
+# needed for live OpenAI-powered runs; the code lazy-imports them and
+# falls back to lightweight custom logic when they are unavailable.
+# =====================================================================
+
+# ---- Core: API, DB, config, CLI, dashboard ----------------------------
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+pydantic-settings>=2.2
+SQLAlchemy>=2.0
+alembic>=1.13
+psycopg[binary]>=3.1            # PostgreSQL / Supabase driver (psycopg3)
+python-dotenv>=1.0
+httpx>=0.27
+typer>=0.12
+rich>=13.7
+pandas>=2.2
+plotly>=5.20
+streamlit>=1.33
+
+# ---- LLM / RAG (OpenAI-powered live runs) -----------------------------
+openai>=1.30
+tiktoken>=0.7
+chromadb>=0.5
+langchain>=0.2
+langchain-openai>=0.1
+langchain-community>=0.2
+langgraph>=0.1
+pypdf>=4.2
+
+# ---- Evaluation frameworks (optional; custom fallback exists) ---------
+# NOTE: RAGAS / DeepEval pull heavy transitive deps and may lag on the
+# newest Python. If they fail to install, the custom evaluators in
+# src/agentops_evalbench/evaluation/metrics.py still provide every metric.
+ragas>=0.1
+deepeval>=0.21
+
+# ---- MCP server -------------------------------------------------------
+mcp>=1.0
+
+# ---- Testing & code quality -------------------------------------------
+pytest>=8.0
+pytest-asyncio>=0.23
+ruff>=0.4
+black>=24.0

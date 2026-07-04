@@ -1,0 +1,57 @@
+# AgentOps EvalBench MCP — local stack.
+#
+#   docker compose up --build                # API + dashboard (uses Supabase/SQLite)
+#   docker compose --profile local-db up     # also start a local Postgres
+#
+# By default the app uses your DATABASE_URL (Supabase Postgres). If it is unset,
+# the app falls back to a local SQLite file under the mounted ./data volume, so
+# the stack runs with zero external services. Set OPENAI_API_KEY for live runs;
+# without it the custom offline evaluators are used.
+
+services:
+  api:
+    build: .
+    command: uvicorn agentops_evalbench.api.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DATABASE_URL: ${DATABASE_URL:-}
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  dashboard:
+    build: .
+    command: >
+      streamlit run src/agentops_evalbench/dashboard/streamlit_app.py
+      --server.port 8501 --server.address 0.0.0.0
+    ports:
+      - "8501:8501"
+    environment:
+      # Point the dashboard at the API service on the compose network.
+      API_BASE_URL: http://api:8000
+    depends_on:
+      - api
+
+  # Optional local Postgres for development. Enable with:
+  #   docker compose --profile local-db up
+  # Then set DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/agentops
+  db:
+    image: postgres:16
+    profiles: ["local-db"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: agentops
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

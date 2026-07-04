@@ -1,0 +1,17 @@
+# Streamlit theme for the AgentOps EvalBench dashboard.
+# Locks a clean, professional light theme so the injected CSS colours (design
+# tokens in streamlit_app.py) stay consistent regardless of the viewer's OS
+# dark/light preference.
+[theme]
+base = "light"
+primaryColor = "#2f6feb"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f3f6fc"
+textColor = "#0f1b2d"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

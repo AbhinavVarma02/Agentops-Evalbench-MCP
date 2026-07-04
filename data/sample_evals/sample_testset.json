@@ -1,0 +1,46 @@
+{
+  "name": "Northwind AI Policy - Sample Test Set",
+  "description": "Evaluation questions grounded in the sample_docs. Used for demos, CI, and offline runs.",
+  "test_cases": [
+    {
+      "question": "What are the three approval gates every AI feature must pass before production?",
+      "expected_answer": "Safety Review, Evaluation Gate, and On-call Readiness.",
+      "ground_truth_context": "Every AI feature must pass three gates before production release: Safety Review, Evaluation Gate, and On-call Readiness."
+    },
+    {
+      "question": "What is the minimum groundedness threshold for a run to pass the Evaluation Gate?",
+      "expected_answer": "Groundedness must be at least 0.80.",
+      "ground_truth_context": "Groundedness must be at least 0.80. Hallucination risk must be at most 0.20."
+    },
+    {
+      "question": "What is the maximum allowed hallucination risk?",
+      "expected_answer": "Hallucination risk must be at most 0.20.",
+      "ground_truth_context": "Hallucination risk must be at most 0.20."
+    },
+    {
+      "question": "How many chunks does the default retriever return per question?",
+      "expected_answer": "The default retriever returns the top 4 chunks per question.",
+      "ground_truth_context": "Default retrieval returns the top 4 chunks per question."
+    },
+    {
+      "question": "What is the default production model, and what is required to switch to a larger model?",
+      "expected_answer": "The default production model is gpt-4o-mini; switching to a larger model requires a cost/benefit note in the pull request.",
+      "ground_truth_context": "The default production model is gpt-4o-mini. Switching to a larger model requires a cost/benefit note in the pull request."
+    },
+    {
+      "question": "What should the assistant do when no relevant chunk is found?",
+      "expected_answer": "It must say it does not know rather than inventing an answer.",
+      "ground_truth_context": "If no relevant chunk is found, the assistant must say it does not know rather than inventing an answer."
+    },
+    {
+      "question": "What is the default rollback target during an AI incident?",
+      "expected_answer": "The most recent evaluation run that passed every quality threshold.",
+      "ground_truth_context": "The default rollback target is the most recent evaluation run that passed every quality threshold."
+    },
+    {
+      "question": "How long are prompts and completions retained before deletion?",
+      "expected_answer": "They are retained for 30 days for debugging, then deleted.",
+      "ground_truth_context": "Prompts and completions are retained for 30 days for debugging, then deleted."
+    }
+  ]
+}

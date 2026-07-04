@@ -1,0 +1,51 @@
+name: eval-gate
+
+# Runs the test suite and a lightweight evaluation quality gate on every push and
+# pull request. The gate uses the bundled sample data and the offline evaluators,
+# so it needs no secrets — but real secrets are wired as placeholders below for
+# teams that want live OpenAI/Supabase runs.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-gate:
+    runs-on: ubuntu-latest
+    env:
+      # Provided via GitHub repo secrets. If unset, the app runs fully offline:
+      # empty OPENAI_API_KEY -> custom evaluators; empty DATABASE_URL -> SQLite.
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install (core + dev)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Lint (ruff)
+        run: ruff check src tests
+
+      - name: Unit tests (pytest)
+        run: pytest -q
+
+      - name: Evaluation quality gate (sample data)
+        run: |
+          # init creates the demo project (id 1) with sample docs + test set,
+          # run evaluates it, and gate fails the build if quality drops below
+          # the groundedness threshold.
+          agentops-eval init
+          agentops-eval run --project-id 1 --run-name ci --prompt-version v1
+          agentops-eval gate --project-id 1 --min-score 0.80
