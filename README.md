@@ -65,6 +65,40 @@ Each evaluation run stores the question, retrieved context, generated answer, ex
 
 ---
 
+## Results
+
+AgentOps EvalBench MCP was validated with both software tests and a small human-labeled evaluator study.
+
+### Software Validation
+
+| Check | Result |
+|---|---:|
+| Automated tests | 31 passed |
+| CLI smoke test | Passed |
+| FastAPI smoke test | Passed |
+| Streamlit dashboard smoke test | Passed |
+| Sample evaluation suite | 8 cases |
+
+### Evaluator Validation
+
+To test whether the automated evaluator aligns with human judgment, I created a 40-example labeled RAG validation set covering grounded answers, hallucinated answers, partially grounded answers, irrelevant answers, and weak-retrieval cases.
+
+| Metric | Result |
+|---|---:|
+| Validation set size | 40 examples |
+| Pass/fail agreement | 87.5% |
+| Groundedness agreement | 90.0% |
+| Hallucination precision | 1.000 |
+| Hallucination recall | 0.882 |
+| Hallucination F1 | 0.938 |
+
+These results show that the evaluator is not only functional as software, but also reasonably aligned with manual review on a focused validation set.
+
+The validation can be reproduced with:
+
+```bash
+python -m agentops_evalbench.evaluation.validation
+
 ## Architecture
 
 ```text
