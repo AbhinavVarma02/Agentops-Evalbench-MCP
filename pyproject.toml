@@ -84,7 +84,8 @@ extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 # --basetemp forces pytest's tmp_path/tmpdir fixtures to use a repo-local,
-# git-ignored directory. Keeping it under .validation avoids stale ACL issues
-# with older temp directories in restricted Windows sandboxes.
-addopts = "-q --basetemp=.validation/pytest_tmp"
+# git-ignored directory. This avoids WinError 5 (Access is denied) that can
+# occur when pytest tries to create its default temp dir under the restricted
+# system temp location on Windows.
+addopts = "-q --basetemp=.pytest_tmp"
 filterwarnings = ["ignore::DeprecationWarning"]
