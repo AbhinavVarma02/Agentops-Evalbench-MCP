@@ -269,7 +269,6 @@ env:
 
 ## Screenshots
 
-_Add screenshots here once you run the dashboard locally._
 <img width="900" height="890" alt="image" src="https://github.com/user-attachments/assets/aaed705b-a30f-42a1-a90a-72768de21772" />
 
 <img width="1747" height="872" alt="image" src="https://github.com/user-attachments/assets/3698461e-270f-4d54-8394-56a98989654b" />
@@ -286,7 +285,6 @@ _Add screenshots here once you run the dashboard locally._
 - `docs/screenshots/Export-report.png`
 <img width="606" height="873" alt="image" src="https://github.com/user-attachments/assets/7fe77ae2-aa93-44b5-a2ca-f79d079ccccf" />
 
-## Resume Bullet
 
 ```text
 Built AgentOps EvalBench MCP, an MCP-powered LLM evaluation and observability platform for testing production RAG and agentic AI systems, with FastAPI, Streamlit, MCP tools, CLI execution, Supabase PostgreSQL storage, RAGAS/DeepEval metrics, dashboard reporting, trace logs, prompt/model comparison, and CI/CD quality gates for groundedness, hallucination risk, retrieval quality, latency, and cost.
@@ -303,4 +301,4 @@ Built AgentOps EvalBench MCP, an MCP-powered LLM evaluation and observability pl
 
 ---
 
-Built as a portfolio project for AI Engineer, LLM Engineer, Applied AI, MLOps/LLMOps, AI Infrastructure, and Developer Tools roles. See [AgentOps_EvalBench_MCP_Project_Overview.md](AgentOps_EvalBench_MCP_Project_Overview.md) for the full project brief and [PROGRESS.md](PROGRESS.md) for the build log.
+Built as a portfolio project for AI Engineer, LLM Engineer, Applied AI, MLOps/LLMOps, AI Infrastructure, and Developer Tools roles. 
