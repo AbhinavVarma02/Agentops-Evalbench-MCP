@@ -2,223 +2,267 @@
 
 > MCP-powered LLM evaluation and observability platform for testing RAG and agentic AI systems across groundedness, hallucination risk, retrieval quality, latency, and cost.
 
-AgentOps EvalBench MCP is a **quality-control layer for LLM applications**. Instead of being another chatbot or RAG demo, it lets you upload documents, build evaluation test sets, run a RAG pipeline, and automatically score every answer for **groundedness, hallucination risk, retrieval quality, answer relevance, latency, token usage, and estimated cost**. Runs are stored in PostgreSQL, failed cases are highlighted, prompt/model versions are compared, and reports are exported — so teams know exactly where an AI system is reliable and where it breaks.
+**AgentOps EvalBench MCP** is a quality-control platform for LLM applications. It helps developers test whether a RAG or agentic AI system is reliable by running evaluation test cases, scoring generated answers, highlighting failed cases, comparing prompt/model versions, and exporting reports.
 
-The same evaluation workflow is available four ways: a **FastAPI backend**, a **Streamlit dashboard**, a **Typer CLI**, and an **MCP server** that exposes tools to MCP-compatible clients (VS Code, Cursor, Claude Desktop). A **GitHub Actions quality gate** can block a pull request when quality drops below threshold.
-
----
-
-## Table of Contents
-
-1. [Project Overview](#project-overview)
-2. [Architecture](#architecture)
-3. [Tech Stack](#tech-stack)
-4. [Features](#features)
-5. [Project Structure](#project-structure)
-6. [Setup](#setup)
-7. [Environment Variables](#environment-variables)
-8. [Running the Backend](#running-the-backend)
-9. [Running the Dashboard](#running-the-dashboard)
-10. [Running the CLI](#running-the-cli)
-11. [Running the MCP Server](#running-the-mcp-server)
-12. [Running Tests](#running-tests)
-13. [GitHub Actions Quality Gate](#github-actions-quality-gate)
-14. [Screenshots](#screenshots)
-15. [Resume Bullet](#resume-bullet)
-16. [Future Improvements](#future-improvements)
+This project focuses on the production layer of AI systems: **evaluation, debugging, observability, and quality gates**.
 
 ---
 
-## Project Overview
+## Highlights
 
-The main workflow is simple:
+- RAG evaluation workflow with document loading, retrieval, generation, and scoring
+- Metrics for groundedness, hallucination risk, relevance, retrieval quality, latency, token usage, and estimated cost
+- Premium Streamlit dashboard for results, failed cases, comparisons, and reports
+- FastAPI backend for projects, test cases, evaluation runs, results, and exports
+- Typer CLI for local developer workflows and CI usage
+- MCP server exposing evaluation tools through a standard tool interface
+- PostgreSQL persistence with Supabase used only as hosted PostgreSQL through `DATABASE_URL`
+- SQLite and offline fallback mode for local demos without keys
+- GitHub Actions quality gate for automated checks
+
+---
+
+## Demo Screenshots
+
+### Dashboard Home
+
+<img width="900" height="890" alt="Dashboard Home" src="https://github.com/user-attachments/assets/aaed705b-a30f-42a1-a90a-72768de21772" />
+
+### Results Dashboard
+
+<img width="1747" height="872" alt="Results Dashboard" src="https://github.com/user-attachments/assets/3698461e-270f-4d54-8394-56a98989654b" />
+
+### Failed Cases
+
+<img width="1675" height="892" alt="Failed Cases" src="https://github.com/user-attachments/assets/65362519-f38e-48d0-ae5e-dd8931687737" />
+
+### Compare Runs
+
+<img width="865" height="875" alt="Compare Runs" src="https://github.com/user-attachments/assets/efbcb741-f2d9-49d3-a805-b5bc2febcda3" />
+
+### Export Report
+
+<img width="606" height="873" alt="Export Report" src="https://github.com/user-attachments/assets/7fe77ae2-aa93-44b5-a2ca-f79d079ccccf" />
+
+---
+
+## How It Works
 
 ```text
 1. Create a project
-2. Load documents (sample docs included)
+2. Load documents or use the included sample documents
 3. Create or import evaluation test cases
-4. Run the RAG pipeline (OpenAI)
-5. Evaluate answers automatically
-6. Review failed cases in the dashboard
-7. Compare against a previous prompt/model version
-8. Export a Markdown / JSON report
-9. Run the same eval from CLI or MCP
-10. Use GitHub Actions to block low-quality deployments
+4. Run the RAG pipeline
+5. Retrieve context and generate answers
+6. Score each answer with evaluation metrics
+7. Review failed cases and metric breakdowns
+8. Compare prompt/model versions
+9. Export Markdown or JSON reports
+10. Run the workflow through the dashboard, API, CLI, or MCP tools
 ```
 
-Every run captures the question, retrieved context, generated answer, expected answer (if any), scoring metrics, latency, cost, model configuration, prompt version, and a pass/fail decision.
+Each evaluation run stores the question, retrieved context, generated answer, expected answer, metric scores, latency, token usage, estimated cost, prompt version, model configuration, pass/fail status, and failure reason.
 
-**Design principle:** the core (config, DB, evaluation metrics, cost tracking, reports, API, CLI) runs with a small dependency set and **degrades gracefully**. Heavy RAG/eval libraries are lazy-imported; when they are missing or a key is absent, lightweight custom evaluators still produce every metric so the platform is always demoable.
+---
 
 ## Architecture
 
 ```text
-                         ┌─────────────────────────────────────────────┐
-                         │            Interfaces (4 ways in)            │
-                         │                                              │
-   Cursor / Claude ◄────►│  MCP Server   Streamlit UI   Typer CLI   ─┐  │
-   Desktop / VS Code     │      │             │             │        │  │
-                         └──────┼─────────────┼─────────────┼────────┼──┘
-                                │             │             │        │
-                                ▼             ▼             ▼        ▼
-                         ┌─────────────────────────────────────────────┐
-                         │              FastAPI backend                 │
-                         │        (projects / test cases / runs)        │
-                         └───────────────────────┬─────────────────────┘
-                                                 │
-              ┌──────────────────────────────────┼──────────────────────────────┐
-              ▼                                  ▼                               ▼
-    ┌──────────────────┐              ┌────────────────────┐          ┌───────────────────┐
-    │   RAG pipeline   │              │  Evaluation engine │          │   Persistence     │
-    │ loader → Chroma  │─ context ───►│ groundedness /     │          │  SQLAlchemy →     │
-    │ → OpenAI answer  │  + answer    │ hallucination /    │─ scores ─►│  PostgreSQL       │
-    │                  │              │ relevance / retriev│          │  (Supabase) or    │
-    └──────────────────┘              │ latency/token/cost │          │  SQLite fallback  │
-                                      └────────────────────┘          └───────────────────┘
-                                                 │
-                                                 ▼
-                                      ┌────────────────────┐
-                                      │  Reports (MD/JSON) │
-                                      │  + CI quality gate │
-                                      └────────────────────┘
+                         ┌────────────────────────────────────┐
+                         │             Interfaces              │
+                         │                                    │
+                         │  Streamlit UI   FastAPI   CLI   MCP │
+                         └────────┬──────────┬───────┬───────┘
+                                  │          │       │
+                                  ▼          ▼       ▼
+                         ┌────────────────────────────────────┐
+                         │        Shared Service Layer          │
+                         │ projects / docs / tests / runs /     │
+                         │ reports / traces                     │
+                         └─────────────────┬──────────────────┘
+                                           │
+              ┌────────────────────────────┼────────────────────────────┐
+              ▼                            ▼                            ▼
+    ┌──────────────────┐        ┌────────────────────┐        ┌───────────────────┐
+    │   RAG Pipeline   │        │ Evaluation Engine  │        │   Persistence     │
+    │ docs → chunks →  │        │ groundedness /     │        │ SQLAlchemy →      │
+    │ retrieval → LLM  │───────►│ hallucination /    │───────►│ PostgreSQL        │
+    │ answer           │        │ relevance / cost   │        │ SQLite fallback   │
+    └──────────────────┘        └────────────────────┘        └───────────────────┘
+                                           │
+                                           ▼
+                                ┌────────────────────┐
+                                │ Reports + CI Gate  │
+                                │ Markdown / JSON    │
+                                └────────────────────┘
 ```
+
+---
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend Dashboard | Streamlit, Plotly, Pandas |
-| Backend API | FastAPI, Pydantic, SQLAlchemy, Alembic, Uvicorn |
-| Database | PostgreSQL (Supabase as hosted Postgres via `DATABASE_URL`), SQLite fallback |
-| MCP Server | Python MCP SDK |
+| Dashboard | Streamlit, Plotly, Pandas |
+| Backend API | FastAPI, Pydantic, SQLAlchemy, Uvicorn |
+| Database | PostgreSQL, Supabase as hosted PostgreSQL, SQLite fallback |
+| RAG Pipeline | OpenAI, LangChain, LangGraph, ChromaDB, PyPDF |
+| Evaluation | Custom Python evaluators, RAGAS/DeepEval-compatible design |
 | CLI | Typer, Rich |
-| LLM / RAG | OpenAI, LangChain, LangGraph, ChromaDB, PyPDF, tiktoken |
-| Evaluation | RAGAS, DeepEval, custom Python evaluators (fallback) |
-| Observability | LangSmith (optional), OpenTelemetry (optional) |
+| MCP Server | Python MCP SDK |
+| Reports | Markdown, JSON |
 | Testing | Pytest, HTTPX |
 | Code Quality | Ruff, Black |
 | DevOps | Docker, Docker Compose, GitHub Actions |
 
-## Features
-
-- **Document loading** — text/markdown/PDF loaders; sample docs included so it works immediately.
-- **Test set manager** — questions, expected answers, ground-truth context.
-- **RAG runner** — OpenAI embeddings + ChromaDB retrieval + OpenAI generation.
-- **Evaluation engine** — groundedness, hallucination risk, answer relevance, retrieval quality, latency, token usage, estimated cost.
-- **Thresholds & pass/fail** — configurable via environment variables.
-- **Persistence** — projects, documents, test cases, runs, results, and trace logs in PostgreSQL.
-- **Four interfaces** — FastAPI, Streamlit, CLI, and MCP tools sharing one core.
-- **Reports** — Markdown and JSON exports with a pass/fail summary and recommendations.
-- **CI quality gate** — GitHub Actions fails the build when quality drops.
+---
 
 ## Project Structure
 
 ```text
-agentops-evalbench-mcp/
-├── src/agentops_evalbench/
-│   ├── config.py            # settings (secrets masked, DB URL normalization, thresholds)
-│   ├── database.py          # SQLAlchemy engine/session, Postgres→SQLite fallback
-│   ├── models.py            # Project, Document, TestCase, EvalRun, EvalResult, TraceLog
-│   ├── schemas.py           # Pydantic v2 request/response models
-│   ├── services.py          # shared DB orchestration reused by API/CLI/MCP
-│   ├── rag/                 # document_loader, vector_store (Chroma + TF-IDF), rag_pipeline
-│   ├── evaluation/          # metrics, cost_tracker, evaluator (thresholds + run orchestration)
-│   ├── api/                 # FastAPI app + routes
-│   ├── dashboard/           # Streamlit app
-│   ├── cli/                 # Typer + Rich CLI
-│   ├── mcp_server/          # MCP tools (FastMCP)
-│   └── reports/             # Markdown / JSON exporters
+Agentops-Evalbench-MCP/
+├── src/
+│   └── agentops_evalbench/
+│       ├── api/                 # FastAPI app and routes
+│       ├── cli/                 # Typer CLI
+│       ├── dashboard/           # Streamlit dashboard
+│       ├── evaluation/          # metrics, evaluator, cost tracking
+│       ├── mcp_server/          # MCP tools
+│       ├── rag/                 # document loading, vector store, RAG pipeline
+│       ├── reports/             # Markdown / JSON exporters
+│       ├── config.py
+│       ├── database.py
+│       ├── models.py
+│       ├── schemas.py
+│       └── services.py
 ├── data/
-│   ├── sample_docs/         # bundled RAG documents
-│   ├── sample_evals/        # bundled test set (JSON)
-│   ├── chroma/              # local vector store (git-ignored)
-│   └── reports/             # generated reports (git-ignored)
-├── tests/                   # pytest suite
-├── .github/workflows/       # eval-gate CI
-├── Dockerfile / docker-compose.yml
-├── pyproject.toml / requirements.txt
-└── PROGRESS.md              # build log & handoff notes
+│   ├── sample_docs/
+│   ├── sample_evals/
+│   └── reports/
+├── docs/screenshots/
+├── tests/
+├── .github/workflows/
+├── .streamlit/
+├── Dockerfile
+├── docker-compose.yml
+├── pyproject.toml
+├── requirements.txt
+├── .env.example
+└── README.md
 ```
 
-**One core, four interfaces.** The API, dashboard, CLI, and MCP server all call the same
-`services` + `evaluation` core, so evaluation logic is never duplicated. Heavy libraries
-(OpenAI, ChromaDB, LangChain, tiktoken) are lazy-imported with lightweight fallbacks, so the
-platform runs — and is fully testable — with no API key and no database.
+---
 
 ## Setup
 
-Requires **Python 3.10+** (developed on 3.13).
+Requires **Python 3.10+**.
 
 ```bash
-# 1. Clone and enter the repo
 git clone https://github.com/AbhinavVarma02/Agentops-Evalbench-MCP.git
-cd agentops-evalbench-mcp
+cd Agentops-Evalbench-MCP
 
-# 2. Create a virtual environment
 python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# macOS/Linux:
-source .venv/bin/activate
-
-# 3a. Full install (RAG + eval + dashboard + MCP)
-pip install -r requirements.txt
-
-# 3b. OR minimal core (API, DB, evaluation, CLI, tests)
-pip install -e ".[db,dev]"
-
-# 4. Configure environment
-cp .env.example .env        # Windows: copy .env.example .env
-# then edit .env and add your OPENAI_API_KEY (and DATABASE_URL if using Postgres)
 ```
 
-> **No database or API key?** You can still run the whole thing. With no `DATABASE_URL` the app uses a local SQLite file, and evaluators fall back to custom logic when OpenAI is unavailable.
+Activate the environment:
+
+```bash
+# Windows
+.venv\Scripts\activate
+
+# macOS/Linux
+source .venv/bin/activate
+```
+
+Install dependencies:
+
+```bash
+# Full install
+pip install -r requirements.txt
+
+# Or editable install for development
+pip install -e ".[db,dev]"
+```
+
+Create a local environment file:
+
+```bash
+# Windows
+copy .env.example .env
+
+# macOS/Linux
+cp .env.example .env
+```
+
+Add your values to `.env`:
+
+```env
+OPENAI_API_KEY=
+DATABASE_URL=
+```
+
+`DATABASE_URL` is optional for local testing. If it is missing, the app uses SQLite fallback.
+
+---
 
 ## Environment Variables
 
-Only two are required; everything else has sensible defaults. See [.env.example](.env.example).
+| Variable | Required | Purpose |
+|---|---:|---|
+| `OPENAI_API_KEY` | For live LLM runs | OpenAI chat and embeddings |
+| `DATABASE_URL` | Recommended | PostgreSQL connection string |
+| `DEFAULT_MODEL` | Optional | Defaults to `gpt-4o-mini` |
+| `DEFAULT_EMBEDDING_MODEL` | Optional | Defaults to `text-embedding-3-small` |
+| `CHROMA_PERSIST_DIR` | Optional | Local vector store path |
+| `EVAL_MIN_GROUNDEDNESS` | Optional | Groundedness pass threshold |
+| `EVAL_MAX_HALLUCINATION_RISK` | Optional | Hallucination risk threshold |
+| `EVAL_MIN_RETRIEVAL_SCORE` | Optional | Retrieval quality threshold |
+| `EVAL_MAX_LATENCY_SECONDS` | Optional | Latency threshold |
+| `LANGSMITH_API_KEY` | Optional | Tracing support |
+| `LANGSMITH_TRACING` | Optional | Enable or disable tracing |
 
-| Variable | Required | Default | Purpose |
-|---|---|---|---|
-| `OPENAI_API_KEY` | ✅ (for live runs) | — | Embeddings + chat completions |
-| `DATABASE_URL` | ✅ (recommended) | SQLite file | Postgres/Supabase connection string |
-| `DEFAULT_MODEL` | | `gpt-4o-mini` | Chat model |
-| `DEFAULT_EMBEDDING_MODEL` | | `text-embedding-3-small` | Embedding model |
-| `CHROMA_PERSIST_DIR` | | `./data/chroma` | Vector store directory |
-| `EVAL_MIN_GROUNDEDNESS` | | `0.80` | Pass threshold |
-| `EVAL_MAX_HALLUCINATION_RISK` | | `0.20` | Pass threshold |
-| `EVAL_MIN_RETRIEVAL_SCORE` | | `0.75` | Pass threshold |
-| `EVAL_MAX_LATENCY_SECONDS` | | `5` | Pass threshold |
-| `LANGSMITH_API_KEY` / `LANGSMITH_TRACING` | | off | Optional tracing |
+Supabase is used only as hosted PostgreSQL through `DATABASE_URL`. Supabase Auth, Storage, anon keys, and service role keys are not required.
 
-> **Deployment note:** Add `OPENAI_API_KEY` and `DATABASE_URL` later through your hosting platform environment variables. Supabase is used only as hosted PostgreSQL through `DATABASE_URL`; no Supabase auth or storage configuration is required for this project.
+---
 
 ## Running the Backend
 
 ```bash
-uvicorn agentops_evalbench.api.main:app --reload --port 8000
-# landing page:
-open http://127.0.0.1:8000/          # friendly HTML landing page
-open http://127.0.0.1:8000/docs      # Swagger API docs
-# health check:
-curl http://localhost:8000/health
-# machine-readable metadata:
-curl http://localhost:8000/meta
+python -m uvicorn agentops_evalbench.api.main:app --reload --port 8000
 ```
+
+Open:
+
+```text
+http://127.0.0.1:8000/
+http://127.0.0.1:8000/docs
+http://127.0.0.1:8000/health
+http://127.0.0.1:8000/meta
+```
+
+---
 
 ## Running the Dashboard
 
 ```bash
 streamlit run src/agentops_evalbench/dashboard/streamlit_app.py
-# opens http://localhost:8501
 ```
 
-If the API is offline the dashboard shows a clear message instead of crashing.
+Open:
+
+```text
+http://localhost:8501
+```
+
+If the backend is offline, the dashboard shows a friendly offline message with the command to start the API.
+
+---
 
 ## Running the CLI
 
 ```bash
 agentops-eval --help
+
 agentops-eval init
 agentops-eval run --project-id 1 --run-name baseline
 agentops-eval results --run-id 1
@@ -228,13 +272,26 @@ agentops-eval export --run-id 1 --format markdown
 agentops-eval gate --run-id 1 --min-score 0.80
 ```
 
+---
+
 ## Running the MCP Server
 
 ```bash
 python -m agentops_evalbench.mcp_server.server
 ```
 
-Register it with an MCP client (e.g. Claude Desktop `claude_desktop_config.json`):
+Available MCP tools:
+
+```text
+run_eval
+score_answer
+compare_runs
+export_report
+list_eval_runs
+get_failed_cases
+```
+
+Example MCP server config:
 
 ```json
 {
@@ -247,58 +304,84 @@ Register it with an MCP client (e.g. Claude Desktop `claude_desktop_config.json`
 }
 ```
 
-Exposed tools: `run_eval`, `score_answer`, `compare_runs`, `export_report`, `list_eval_runs`, `get_failed_cases`.
+---
+
+## API Endpoints
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /` | HTML landing page |
+| `GET /docs` | Swagger API docs |
+| `GET /health` | JSON health check |
+| `GET /meta` | API metadata |
+| `POST /projects` | Create project |
+| `GET /projects` | List projects |
+| `POST /projects/{project_id}/documents/load-sample` | Load sample documents |
+| `POST /projects/{project_id}/test-cases` | Create test case |
+| `GET /projects/{project_id}/test-cases` | List test cases |
+| `POST /projects/{project_id}/eval-runs` | Run evaluation |
+| `GET /eval-runs/{run_id}` | Get run summary |
+| `GET /eval-runs/{run_id}/results` | Get detailed results |
+| `GET /eval-runs/{run_id}/failed-cases` | Get failed cases |
+| `GET /eval-runs/{run_id}/export` | Export report |
+| `POST /eval-runs/compare` | Compare runs |
+
+---
 
 ## Running Tests
 
 ```bash
 pytest
-# or with coverage of the core modules
-pytest -q
+ruff check .
+black --check .
 ```
 
-## GitHub Actions Quality Gate
-
-[.github/workflows/eval-gate.yml](.github/workflows/eval-gate.yml) installs deps, runs the test suite, and runs a lightweight evaluation gate on sample data. It fails the build when quality thresholds are not met. Secrets are referenced as placeholders only:
-
-```yaml
-env:
-  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  DATABASE_URL: ${{ secrets.DATABASE_URL }}
-```
-
-## Screenshots
-
-<img width="900" height="890" alt="image" src="https://github.com/user-attachments/assets/aaed705b-a30f-42a1-a90a-72768de21772" />
-
-<img width="1747" height="872" alt="image" src="https://github.com/user-attachments/assets/3698461e-270f-4d54-8394-56a98989654b" />
-
-- `docs/screenshots/dashboard-home.png`
-<img width="730" height="842" alt="image" src="https://github.com/user-attachments/assets/790618cc-6996-462d-9438-ff8d7fbec019" />
-
-- `docs/screenshots/failed-cases.png`
- <img width="1675" height="892" alt="image" src="https://github.com/user-attachments/assets/65362519-f38e-48d0-ae5e-dd8931687737" />
-
-- `docs/screenshots/compare-runs.png`
-<img width="865" height="875" alt="image" src="https://github.com/user-attachments/assets/efbcb741-f2d9-49d3-a805-b5bc2febcda3" />
-
-- `docs/screenshots/Export-report.png`
-<img width="606" height="873" alt="image" src="https://github.com/user-attachments/assets/7fe77ae2-aa93-44b5-a2ca-f79d079ccccf" />
-
+Current validation:
 
 ```text
-Built AgentOps EvalBench MCP, an MCP-powered LLM evaluation and observability platform for testing production RAG and agentic AI systems, with FastAPI, Streamlit, MCP tools, CLI execution, Supabase PostgreSQL storage, RAGAS/DeepEval metrics, dashboard reporting, trace logs, prompt/model comparison, and CI/CD quality gates for groundedness, hallucination risk, retrieval quality, latency, and cost.
+31 passed
+ruff clean
+black clean
 ```
-
-## Future Improvements
-
-- Async / batched evaluation runs for large test sets.
-- Additional providers behind a pluggable LLM interface.
-- Alembic migrations wired into CI for schema versioning.
-- Richer agentic (multi-step tool) traces beyond single-hop RAG.
-- Auth + multi-user projects for a hosted deployment.
-- Native RAGAS/DeepEval scoring surfaced alongside the custom metrics.
 
 ---
 
-Built as a portfolio project for AI Engineer, LLM Engineer, Applied AI, MLOps/LLMOps, AI Infrastructure, and Developer Tools roles. 
+## GitHub Actions Quality Gate
+
+The repository includes a lightweight CI workflow that installs dependencies, runs tests, and runs a sample evaluation gate.
+
+```text
+.github/workflows/eval-gate.yml
+```
+
+---
+
+## What This Project Demonstrates
+
+- LLM evaluation and reliability engineering
+- RAG pipeline design
+- AI observability and quality gates
+- MCP tool integration
+- FastAPI backend development
+- Streamlit dashboarding
+- CLI tooling for developer workflows
+- PostgreSQL persistence with SQLAlchemy
+- Secure environment variable handling
+- Testable and offline-friendly AI system design
+
+---
+
+## Future Improvements
+
+- Add async/batched evaluation for larger test sets
+- Add more provider adapters through a pluggable model interface
+- Add richer agent trace visualization
+- Add user accounts for hosted multi-user usage
+- Add a lightweight VS Code extension as a separate phase
+- Add deployed demo links after cloud deployment is complete
+
+---
+
+## License
+
+This project is licensed under the MIT License.
