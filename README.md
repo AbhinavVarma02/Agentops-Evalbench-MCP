@@ -270,11 +270,21 @@ env:
 ## Screenshots
 
 _Add screenshots here once you run the dashboard locally._
+<img width="900" height="890" alt="image" src="https://github.com/user-attachments/assets/aaed705b-a30f-42a1-a90a-72768de21772" />
+
+<img width="1747" height="872" alt="image" src="https://github.com/user-attachments/assets/3698461e-270f-4d54-8394-56a98989654b" />
 
 - `docs/screenshots/dashboard-home.png`
-- `docs/screenshots/results.png`
+<img width="730" height="842" alt="image" src="https://github.com/user-attachments/assets/790618cc-6996-462d-9438-ff8d7fbec019" />
+
 - `docs/screenshots/failed-cases.png`
+ <img width="1675" height="892" alt="image" src="https://github.com/user-attachments/assets/65362519-f38e-48d0-ae5e-dd8931687737" />
+
 - `docs/screenshots/compare-runs.png`
+<img width="865" height="875" alt="image" src="https://github.com/user-attachments/assets/efbcb741-f2d9-49d3-a805-b5bc2febcda3" />
+
+- `docs/screenshots/Export-report.png`
+<img width="606" height="873" alt="image" src="https://github.com/user-attachments/assets/7fe77ae2-aa93-44b5-a2ca-f79d079ccccf" />
 
 ## Resume Bullet
 
