@@ -12,6 +12,7 @@ pydantic-settings). Design rules for this module:
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -21,6 +22,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Project root = two levels up from this file (src/agentops_evalbench/config.py).
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SQLITE_PATH = PROJECT_ROOT / "data" / "agentops.db"
+DISABLE_DOTENV_ENV_VAR = "AGENTOPS_EVALBENCH_DISABLE_DOTENV"
 
 
 class Settings(BaseSettings):
@@ -137,6 +139,9 @@ class Settings(BaseSettings):
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """Return a cached ``Settings`` instance (read once per process)."""
+    disabled = os.getenv(DISABLE_DOTENV_ENV_VAR, "").strip().lower()
+    if disabled in {"1", "true", "yes", "on"}:
+        return Settings(_env_file=None)
     return Settings()
 
 

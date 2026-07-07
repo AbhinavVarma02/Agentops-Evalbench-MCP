@@ -13,6 +13,9 @@ _TEST_DB = Path(tempfile.gettempdir()) / "agentops_evalbench_test.db"
 if _TEST_DB.exists():
     _TEST_DB.unlink()
 
+# Disable dotenv loading in tests so local secrets are never read.
+os.environ["AGENTOPS_EVALBENCH_DISABLE_DOTENV"] = "1"
+
 # Force the SQLite fallback for the whole test session.
 os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB.as_posix()}"
 # Keep OpenAI off so tests exercise the deterministic offline evaluators.

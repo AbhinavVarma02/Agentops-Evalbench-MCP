@@ -27,8 +27,6 @@ import json
 import re
 from dataclasses import dataclass
 
-from ..config import get_settings
-
 # --------------------------------------------------------------------------- #
 # Lightweight text utilities (kept local so this module has no rag dependency)
 # --------------------------------------------------------------------------- #
@@ -287,6 +285,8 @@ def llm_judge_scores(
     model: str | None = None,
 ) -> MetricScores:
     """Score with an OpenAI judge. Returns custom scores if OpenAI is unavailable."""
+    from ..config import get_settings
+
     settings = get_settings()
     if not settings.has_openai_key:
         return custom_scores(question, answer, context, expected_answer)

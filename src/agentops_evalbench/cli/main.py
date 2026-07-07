@@ -11,6 +11,7 @@ Commands::
     agentops-eval failed --run-id 1
     agentops-eval compare --baseline 1 --candidate 2
     agentops-eval export --run-id 1 --format markdown
+    agentops-eval evaluator-validation
     agentops-eval gate --run-id 1 --min-score 0.80
 """
 
@@ -228,6 +229,42 @@ def export(
         out_dir = Path(output)
     path = exporter.save_report(report, fmt, out_dir)
     console.print(f"[green]Report written:[/] {path}")
+
+
+@app.command("evaluator-validation")
+def evaluator_validation(
+    input_path: str = typer.Option(
+        "",
+        "--input",
+        "-i",
+        help="Validation set path (default: bundled evaluator_validation_set.json).",
+    ),
+    output_dir: str = typer.Option(
+        "", "--output-dir", "-o", help="Output directory (default: data/reports/)."
+    ),
+) -> None:
+    """Run the human-labeled evaluator validation study and export MD/JSON."""
+    from pathlib import Path
+
+    from ..evaluation.validation import DEFAULT_OUTPUT_DIR, DEFAULT_VALIDATION_SET, run_validation
+
+    report, paths = run_validation(
+        input_path=Path(input_path) if input_path else DEFAULT_VALIDATION_SET,
+        output_dir=Path(output_dir) if output_dir else DEFAULT_OUTPUT_DIR,
+    )
+    summary = report["summary"]
+    table = Table(title="Evaluator validation")
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value", justify="right")
+    table.add_row("Validation set size", str(summary["total_examples"]))
+    table.add_row("Pass/fail agreement", f"{summary['pass_fail_agreement_pct']:.2f}%")
+    table.add_row("Groundedness agreement", f"{summary['groundedness_agreement_pct']:.2f}%")
+    table.add_row("Hallucination precision", f"{summary['hallucination_precision']:.4f}")
+    table.add_row("Hallucination recall", f"{summary['hallucination_recall']:.4f}")
+    table.add_row("Hallucination F1", f"{summary['hallucination_f1']:.4f}")
+    console.print(table)
+    console.print(f"[green]Markdown report:[/] {paths['markdown']}")
+    console.print(f"[green]JSON report:[/] {paths['json']}")
 
 
 @app.command()
